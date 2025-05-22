@@ -1,4 +1,6 @@
 import argparse
+import builtins
+import inspect
 import itertools
 import shutil
 import sys
@@ -59,6 +61,13 @@ class NukeSignatureGenerator(AdvancedSignatureGenerator):
 
 
 class InspectionStubGenerator(mypy.stubgenc.InspectionStubGenerator):
+    _REAL_BUILTINS = set([x[0] for x in inspect.getmembers(builtins)])
+
+    _MODULE_REMAP = {
+        "gsv": "_gsv",
+        "_linkableKnobInfo": "_nuke",
+    }
+
     def get_sig_generators(self) -> list[SignatureGenerator]:
         return [
             NukeSignatureGenerator(
@@ -66,13 +75,21 @@ class InspectionStubGenerator(mypy.stubgenc.InspectionStubGenerator):
             )
         ]
 
+    def get_obj_module(self, obj: object) -> str | None:
+        module = super().get_obj_module(obj)
+        try:
+            return self._MODULE_REMAP[module]
+        except KeyError:
+            return module
+
     def is_defined_in_module(self, obj: object) -> bool:
         """Check if object is considered defined in the current module."""
-        if isinstance(obj, type) and 'Node' in [x.__name__ for x in obj.mro()]:
+        if self.module_name == "_nuke" \
+                and inspect.getmodule(obj) is builtins \
+                and obj.__name__ not in self._REAL_BUILTINS:
             return True
 
-        module = self.get_obj_module(obj)
-        return module is None or module == self.module_name
+        return super().is_defined_in_module(obj)
 
     # def set_defined_names(self, defined_names: set[str]) -> None:
     #     super().set_defined_names(defined_names)
@@ -110,6 +127,7 @@ if __name__ == "__main__":
         "_nuke_color",
         "_curvelib",
         "_geo",
+        "_gsv",
         "_memory",
         "_localization",
         "_splinewarp",
