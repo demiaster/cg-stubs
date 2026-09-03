@@ -9,6 +9,9 @@ class ModuleInspect:
     using multiprocessing.
     """
 
+    def _start(self) -> None:
+        pass
+
     def get_package_properties(
         self, package_id: str
     ) -> mypy.moduleinspect.ModuleProperties:

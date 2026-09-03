@@ -14,28 +14,11 @@ import mypy.stubutil
 from mypy.stubgenc import DocstringSignatureGenerator, SignatureGenerator
 
 import nuke
+import stubgenlib.moduleinspect
 from stubgenlib.siggen import (
     AdvancedSigMatcher,
     AdvancedSignatureGenerator,
 )
-
-
-class ModuleInspect:
-    """
-    Patch ModuleInspect so that it imports modules directly into the current process rather than
-    using a multiprocessing.
-    """
-
-    def get_package_properties(
-        self, package_id: str
-    ) -> mypy.moduleinspect.ModuleProperties:
-        return mypy.moduleinspect.get_package_properties(package_id)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return
 
 
 class NukeSignatureGenerator(AdvancedSignatureGenerator):
@@ -104,12 +87,10 @@ class InspectionStubGenerator(mypy.stubgenc.InspectionStubGenerator):
             return type_name
 
 
+stubgenlib.moduleinspect.patch()
+
 mypy.stubgen.InspectionStubGenerator = InspectionStubGenerator  # type: ignore[attr-defined,misc]
 mypy.stubgenc.InspectionStubGenerator = InspectionStubGenerator  # type: ignore[misc]
-
-mypy.moduleinspect.ModuleInspect = ModuleInspect
-mypy.stubutil.ModuleInspect = ModuleInspect
-mypy.stubgen.ModuleInspect = ModuleInspect
 
 
 if __name__ == "__main__":
