@@ -1,5 +1,6 @@
 from typing import Any, ClassVar, List, Union, overload
-from _nuke import Hash
+
+from ._nuke import Hash
 
 class AnimAttributes:
     kAlphaAttribute: ClassVar[str] = ...

@@ -1,6 +1,7 @@
+from typing import Any
+
 from ._nuke_color import *
 from . import callbacks as callbacks
-from typing import Any
 
 defaultLUTMappers: Any
 

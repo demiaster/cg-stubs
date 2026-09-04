@@ -1,9 +1,7 @@
-
 from typing import Any, Callable, Dict, ClassVar, Generic, IO, List, Literal, Optional, Tuple, TypeVar, Union, overload
 
-from typing import overload
-import _geo
-import _nukemath
+from . import _geo
+from . import _nukemath
 
 NodeT = TypeVar('NodeT', bound='Node')
 

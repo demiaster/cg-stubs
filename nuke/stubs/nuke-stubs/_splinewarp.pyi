@@ -1,8 +1,8 @@
 from typing import Any, Union
 from typing_extensions import Literal
 
-import _curveknob
-import _curvelib
+from . import _curveknob
+from . import _curvelib
 
 class SplineKnob(_curveknob.CurveKnob):
     def defaultJoin(self, AShape: _curveknob.Element, BShape: _curveknob.Element) -> _curvelib.CorrespondencePoints: ...

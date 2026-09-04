@@ -1,7 +1,8 @@
 from typing import Any, Iterable, Iterator, List, Optional, Sized, TypeVar, Union, overload
 from typing_extensions import Literal
-from _nuke import Knob
-from _curvelib import AnimAttributes, AnimCTransform, AnimControlPoint, CubicCurve
+
+from ._curvelib import AnimAttributes, AnimCTransform, AnimControlPoint, CubicCurve
+from ._nuke import Knob
 
 ElementT = TypeVar('ElementT', bound='Element')
 
