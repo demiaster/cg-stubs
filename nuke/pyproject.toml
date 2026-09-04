@@ -1,9 +1,12 @@
 [project]
 name = "types-nuke"
-version = "13.2.8.0"
+version = "16.0.3.0"
 
 readme = "README.md"
-authors = ["Chad Dombrova", "Nathan Rusch"]
+authors = [
+    {name = "Chad Dombrova"},
+    {name = "Nathan Rusch"},
+]
 description = "Unofficial python stubs for Foundry Nuke"
 license = "MIT"
 
@@ -25,6 +28,11 @@ keywords = ["3d", "graphics", "games", "VFX", "CG", "animation"]
 dev = [
     "stubgenlib",
 ]
+
+[tool.uv]
+# Disable the any compiled `mypy` submodules so we can monkey-patch
+# various parts of its stub generation machinery.
+no-binary-package = ["mypy"]
 
 [tool.uv.sources]
 stubgenlib = { path = "../common" }
