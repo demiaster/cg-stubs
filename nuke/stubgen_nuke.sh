@@ -1,23 +1,36 @@
-#!/bin/bash
+#!/bin/env bash
 
-set -e
+set -euo pipefail
 
-REPO_PATH=$(git rev-parse --show-toplevel)
 
-setpkg -c nuke-13
+[[ -z "${NUKE_EXECUTABLE:-}" ]] && {
+    msg="NUKE_EXECUTABLE is not set, or set to an empty value in the environment. "
+    msg+="Consider setting it in nuke/.env."
+    >&2 echo "${msg}"
+    exit 1
+}
 
-outdir=$REPO_PATH/nuke/stubs/
 
-# using $NUKE_APP/python3 crashes in my latest tests
-# must import nuke to make nuke modules available, but this consumes sys.argv, so we have to get a bit hacky
-export PYTHONPATH=$REPO_PATH/../mypy
+# Get this Nuke's Python version.
+THIS_SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+py_version_script="${THIS_SCRIPT_DIR}/get_py_version.py"
 
-$REPO_PATH/nuke/bin/nukepy -c "import _nuke;import sys;sys.argv=['foo', '-o=$outdir', '-m', '_nuke', '-p', 'nuke_internal', '-m', '_curveknob', '-m', '_nuke_color', '-m', '_curvelib', '-m', '_geo', '-m', '_localization', '-m', '_splinewarp']; import mypy.stubgen;mypy.stubgen.main()"
+[[ ! -f "${py_version_script}" ]] && {
+    >&2 echo "Cannot infer Nuke's python version - ${py_version_script} is not a file."
+    exit 1
+}
 
-sed -i 's/\bstring\b/str/g' $outdir/_nuke.pyi
-sed -i 's/MenuorNone/Optional[Menu]/g' $outdir/_nuke.pyi
-sed -i 's/\bBool\b/bool/g' $outdir/_nuke.pyi
+py_version_file=$(mktemp -t "py_version.XXXXXXXXXX")
+trap "rm ${py_version_file}" EXIT
 
-rm -rf $outdir/nuke
-mv $outdir/nuke_internal $outdir/nuke
-#mv .out/* $outdir/
+&>/dev/null ${NUKE_EXECUTABLE} -t ${NUKE_NON_COMMERCIAL:+--nc} "${py_version_script}" "${py_version_file}"
+
+py_version=$(cat ${py_version_file})
+
+[[ -z "${py_version}" ]] && {
+    >&2 echo "Could not infer Nuke's python version."
+    exit 1
+}
+
+echo "Running uv with python ${py_version}"
+uv run --only-dev --python "${py_version}" --reinstall-package stubgenlib nuke_shim.py

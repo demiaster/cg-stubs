@@ -54,5 +54,8 @@ dev-mode-dirs = ["stubs"]
 follow_imports = "skip"
 check_untyped_defs = true
 files = [
+    "get_py_version.py",
+    "nuke_shim.py",
     "stubgen_nuke.py",
+    "nuke_shim.py",
 ]
