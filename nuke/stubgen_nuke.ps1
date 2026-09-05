@@ -31,14 +31,3 @@ uv run `
   --python "$env:NUKE_ROOT/python.exe" `
   stubgen_nuke.py `
   $outdir
-
-# XXX: For command portability with the bash script
-Set-Alias sed "C:\Program Files\Git\usr\bin\sed.exe"
-
-sed -i 's/\bstring\b/str/g' $outdir/nuke-stubs/_nuke.pyi
-sed -i 's/MenuorNone/Optional[Menu]/g' $outdir/nuke-stubs/_nuke.pyi
-sed -i 's/\bBool\b/bool/g' $outdir/nuke-stubs/_nuke.pyi
-
-# rm -r "$outdir/nuke-stubs"
-# mv "$outdir/nuke_internal" "$outdir/nuke-stubs"
-# mv "$outdir/_*.pyi" "$outdir/nuke-stubs"

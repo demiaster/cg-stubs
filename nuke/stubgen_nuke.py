@@ -2,15 +2,12 @@ import argparse
 import builtins
 import inspect
 import itertools
+import re
 import shutil
-import sys
 from pathlib import Path
 
-import mypy.fastparse
-import mypy.moduleinspect
 import mypy.stubgen
 import mypy.stubgenc
-import mypy.stubutil
 from mypy.stubgenc import DocstringSignatureGenerator, SignatureGenerator
 
 import nuke
@@ -19,6 +16,13 @@ from stubgenlib.siggen import (
     AdvancedSigMatcher,
     AdvancedSignatureGenerator,
 )
+
+
+_fuzzy_bool = re.compile("bool(?:ean)?", re.IGNORECASE)
+_fuzzy_float = re.compile("float?", re.IGNORECASE)
+_fuzzy_int = re.compile("int(?:eger)?", re.IGNORECASE)
+_fuzzy_string = re.compile("str(?:ing)?", re.IGNORECASE)
+_fuzzy_string_list = re.compile(r"str(?:ing)?\s+list\.?", re.IGNORECASE)
 
 
 class NukeSignatureGenerator(AdvancedSignatureGenerator):
@@ -32,11 +36,47 @@ class NukeSignatureGenerator(AdvancedSignatureGenerator):
         #     ("*", "parts", "list"): "Iterable[Part]",
         #     ("*", "channels", "dict"): "Mapping[str, Channel | numpy.ndarray]",
         # },
-        # result_type_overrides={
-        #     ("*.isOpenExrFile", "*"): "bool",
-        #     ("*.isComplete", "*"): "bool",
-        #     ("*.File.__enter__", "object"): "Self",
-        # },
+        result_type_overrides={
+            ("_nuke.AnimationCurve.keys", "*"): "list[AnimationKey]",
+            ("_nuke.AnimationCurve.setKey", "*"): "AnimationKey",
+            ("_nuke.Array_Knob.animation", "*"): "AnimationCurve | None",
+            ("_nuke.Array_Knob.animations", "*"): "list[AnimationCurve]",
+            ("_nuke.Array_Knob.deleteAnimation", "*"): "None",
+            ("_nuke.Knob.ClassID", "*"): "int",
+            ("_nuke.Knob.label", "*"): "str",
+            ("_nuke.Knob.name", "*"): "str",
+            ("_nuke.Knob.tooltip", "*"): "str",
+            ("_nuke.Node.input", "*"): "Node | None",
+            ("_nuke.Node.inputs", "*"): "int",
+            ("_nuke.Node.isCloneable", "*"): "bool",
+            ("_nuke.Node.numKnobs", "*"): "int",
+            ("_nuke.Node.parent", "*"): "Group",
+            ("_nuke.Node.performanceInfo", "*"): "dict[str, Any]",
+            ("_nuke.Node.shown", "*"): "bool",
+            ("_nuke.GeoSelect_Knob.*", "listoflistsoffloats"): "list[list[float]]",
+            ("_nuke.Group.*", "NodeorNone."): "Node | None",
+            ("_nuke.addFormat", "*"): "Format | None",
+            ("_nuke.*.Class", "*"): "str",
+            ("_nuke.*.writeKnobs", "*"): "str",
+            ("_nuke.*", "knob"): "Knob",
+            ("_nuke.*", "MenuorNone"): "Menu | None",
+            ("_nuke.*", "Trueif*"): "bool",
+            ("_nuke.*", "nuke.Node"): "Node",
+            ("_nuke.*", "Listofnodes"): "list[Node]",
+            ("_nuke.*", "Listofnodes."): "list[Node]",
+            ("_nuke.*", "Listofstrings."): "list[str]",
+            ("_nuke.*", "floatlist."): "list[float]",
+            ("_nuke.*", "*[Nn]umberof*"): "int",
+            ("_nuke.*", "Thesubmenuthatwasadded."): "Menu",
+            ("_nuke.*", "Theseparatorthatwascreated."): "MenuItem",
+            # NOTE: Keep these blanket patterns at the end so they don't interfere with any of
+            # the more targeted remapping patterns.
+            ("_nuke.*", _fuzzy_string_list): "list[str]",
+            ("*", _fuzzy_bool): "bool",
+            ("*", _fuzzy_float): "float",
+            ("*", _fuzzy_int): "int",
+            ("*", _fuzzy_string): "str",
+        },
         # property_type_overrides={
         #     ("*.File.parts", "*"): "list[Part]",
         # },
