@@ -89,6 +89,7 @@ class InspectionStubGenerator(mypy.stubgenc.InspectionStubGenerator):
     _MODULE_REMAP = {
         "gsv": "_gsv",
         "_linkableKnobInfo": "_nuke",
+        "nukemath": "_nukemath",
     }
 
     def get_sig_generators(self) -> list[SignatureGenerator]:
@@ -150,6 +151,7 @@ if __name__ == "__main__":
         "_geo",
         "_gsv",
         "_memory",
+        "_nukemath",
         "_localization",
         "_splinewarp",
     ]

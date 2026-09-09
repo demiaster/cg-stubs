@@ -13,5 +13,6 @@ from . import rotopaint as rotopaint
 from . import splinewarp as splinewarp
 from . import _curvelib as curvelib
 from . import _curveknob as curveknob
+from . import _nukemath as math
 from . import _nukemath as nukemath
 from . import _gsv as gsv
