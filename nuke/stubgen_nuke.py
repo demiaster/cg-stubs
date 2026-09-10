@@ -8,7 +8,12 @@ from pathlib import Path
 
 import mypy.stubgen
 import mypy.stubgenc
-from mypy.stubgenc import DocstringSignatureGenerator, SignatureGenerator
+from mypy.stubgenc import (
+   DocstringSignatureGenerator,
+   FunctionContext,
+   FunctionSig,
+   SignatureGenerator,
+)
 
 import nuke
 import stubgenlib.moduleinspect
@@ -81,6 +86,17 @@ class NukeSignatureGenerator(AdvancedSignatureGenerator):
         #     ("*.File.parts", "*"): "list[Part]",
         # },
     )
+
+    def get_function_sig(
+        self, default_sig: FunctionSig, ctx: FunctionContext
+    ) -> list[FunctionSig] | None:
+        results = super().get_function_sig(default_sig, ctx)
+        if results and len(results) > 1:
+            # The docstring signature detection is pretty loose in what text it will,
+            # match so it ends up matching a lot of example code snippets and producing
+            # overloads that shouldn't exist, all of which have a return type of `Any`.
+            return [results[0]] + [sig for sig in results[1:] if sig.ret_type != "Any"]
+        return results
 
 
 class InspectionStubGenerator(mypy.stubgenc.InspectionStubGenerator):
