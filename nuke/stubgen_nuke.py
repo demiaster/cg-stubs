@@ -92,6 +92,11 @@ class InspectionStubGenerator(mypy.stubgenc.InspectionStubGenerator):
         "nukemath": "_nukemath",
     }
 
+    # Maps module names to sets of symbol names that should be omitted the module stub.
+    _SKIP_ATTRS_BY_MODULE = {
+        "_nuke": {"pluginAddPath", "pluginAppendPath"}
+    }
+
     def get_sig_generators(self) -> list[SignatureGenerator]:
         return [
             NukeSignatureGenerator(
@@ -105,6 +110,12 @@ class InspectionStubGenerator(mypy.stubgenc.InspectionStubGenerator):
             return self._MODULE_REMAP[module]
         except KeyError:
             return module
+
+    def is_skipped_attribute(self, attr: str) -> bool:
+        if super().is_skipped_attribute(attr):
+            return True
+        custom_skip_attrs = self._SKIP_ATTRS_BY_MODULE.get(self.module_name)
+        return custom_skip_attrs is not None and attr in custom_skip_attrs
 
     def is_defined_in_module(self, obj: object) -> bool:
         """Check if object is considered defined in the current module."""
