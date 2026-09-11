@@ -49,3 +49,10 @@ packages = ["stubs/nuke-stubs"]
 # of the package do no include .py files.  Adding this ensures the .pth file
 # is written correctly
 dev-mode-dirs = ["stubs"]
+
+[tool.mypy]
+follow_imports = "skip"
+check_untyped_defs = true
+files = [
+    "stubgen_nuke.py",
+]
