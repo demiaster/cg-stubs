@@ -5,27 +5,39 @@ import sys
 from pathlib import Path
 from typing import Mapping
 
-NUKE_EXECUTABLE_ENV_VAR = "NUKE_EXECUTABLE"
+NUKE_ROOT_ENV_VAR = "NUKE_ROOT"
 NUKE_NON_COMMERCIAL_ENV_VAR = "NUKE_NON_COMMERCIAL"
 STUBS_OUT = "stubs"
 STUBGEN_SCRIPT = "stubgen_nuke.py"
 _CURRENT_PATH = pathlib.Path(__file__).parent.absolute()
 
 
-def get_nuke_executable() -> Path:
-    """Retrieve path to nuke executable from environment."""
-    nuke_executable_env_var = os.getenv(NUKE_EXECUTABLE_ENV_VAR, "")
-    if not nuke_executable_env_var:
+def get_nuke_root() -> Path:
+    nuke_root_env_var = os.getenv(NUKE_ROOT_ENV_VAR, "")
+    if not nuke_root_env_var:
         raise KeyError(
-            "NUKE_EXECUTABLE is not set, or set to an empty value in the environment. "
-            "Consider setting it in nuke/.env."
+            "NUKE_ROOT is not set, or set to an empty value in the environment. Consider setting it in nuke/.env."
         )
 
-    nuke_executable_path = Path(nuke_executable_env_var)
+    nuke_root_path = Path(nuke_root_env_var)
 
-    if not nuke_executable_path.exists() or not nuke_executable_path.is_file():
-        raise ValueError(
-            f"Candidate Nuke executable {str(nuke_executable_path)} is not a file!"
+    if not nuke_root_path.exists() or not nuke_root_path.is_dir():
+        raise NotADirectoryError(
+            f"Candidate Nuke root {str(nuke_root_path)} is not a directory!"
+        )
+    return nuke_root_path
+
+
+def get_nuke_executable(nuke_root: Path) -> Path:
+    # Win: 'C:\Program Files\Nuke17.1v1\Nuke17.1.exe'
+    # Linux: '/usr/local/Nuke17.0v2/Nuke17.0'
+    platform_pattern = "Nuke[0-9][0-9].[0-9].exe" if sys.platform == "win32" else "Nuke[0-9][0-9].[0-9]"
+
+    nuke_executable_path = next(iter(nuke_root.glob(platform_pattern)), "")
+
+    if not nuke_executable_path or not nuke_executable_path.is_file():
+        raise FileNotFoundError(
+            f"Cannot locate Nuke's executable in {str(nuke_root)!r}"
         )
     return nuke_executable_path
 
@@ -87,28 +99,28 @@ def get_pythonpath_env_var(
     return {"PYTHONPATH": pythonpath}
 
 
-def get_nuke_usd_lib_env_vars(nuke_root: Path) -> dict[str, str]:
-    """Env vars for Nuke USD setup.
-
-    https://learn.foundry.com/nuke/content/comp_environment/script_editor/nuke_python_module.html#WindowsSetup
-    """
-    if sys.platform != "win32":
-        return {}
-
-    usg_lib_path = nuke_root / "FnUSD" / "lib"
-    usg_plugin_path = nuke_root / "FnUSD" / "plugin" / "usd"
-    usg_shim_dll_path = next(iter(nuke_root.glob("FnUsdShim.*.dll")), None)
-    for path in (usg_lib_path, usg_plugin_path, usg_shim_dll_path):
-        if path is None or not path.exists():
-            raise FileNotFoundError(
-                f"Cannot configure USD for Nuke: {str(path)!r} does not exist!"
-            )
-
-    return {
-        "USG_USD_LIB_PATH": str(usg_lib_path),
-        "USG_USD_PLUGIN_PATH": str(usg_plugin_path),
-        "USG_SHIMLIB_NAME": str(usg_shim_dll_path),
-    }
+# def get_nuke_usd_lib_env_vars(nuke_root: Path) -> dict[str, str]:
+#     """Env vars for Nuke USD setup.
+#
+#     https://learn.foundry.com/nuke/content/comp_environment/script_editor/nuke_python_module.html#WindowsSetup
+#     """
+#     if sys.platform != "win32":
+#         return {}
+#
+#     usg_lib_path = nuke_root / "FnUSD" / "lib"
+#     usg_plugin_path = nuke_root / "FnUSD" / "plugin" / "usd"
+#     usg_shim_dll_path = next(iter(nuke_root.glob("FnUsdShim.*.dll")), None)
+#     for path in (usg_lib_path, usg_plugin_path, usg_shim_dll_path):
+#         if path is None or not path.exists():
+#             raise FileNotFoundError(
+#                 f"Cannot configure USD for Nuke: {str(path)!r} does not exist!"
+#             )
+#
+#     return {
+#         "USG_USD_LIB_PATH": str(usg_lib_path),
+#         "USG_USD_PLUGIN_PATH": str(usg_plugin_path),
+#         "USG_SHIMLIB_NAME": str(usg_shim_dll_path),
+#     }
 
 
 def get_stubs_out_dir() -> pathlib.Path:
@@ -139,9 +151,10 @@ def run_stubgen_in_nuke_venv() -> None:
     # Construct env for stub generation.
     env = os.environ.copy()
 
-    nuke_executable_path = get_nuke_executable()
-    env.update(get_pythonpath_env_var(nuke_executable_path.parent, env))
-    env.update(get_nuke_usd_lib_env_vars(nuke_executable_path.parent))
+    nuke_root = get_nuke_root()
+    nuke_executable_path = get_nuke_executable(nuke_root)
+    env.update(get_pythonpath_env_var(nuke_root, env))
+    # env.update(get_nuke_usd_lib_env_vars(nuke_executable_path.parent))
 
     args = [
         str(nuke_executable_path),
