@@ -99,30 +99,6 @@ def get_pythonpath_env_var(
     return {"PYTHONPATH": pythonpath}
 
 
-# def get_nuke_usd_lib_env_vars(nuke_root: Path) -> dict[str, str]:
-#     """Env vars for Nuke USD setup.
-#
-#     https://learn.foundry.com/nuke/content/comp_environment/script_editor/nuke_python_module.html#WindowsSetup
-#     """
-#     if sys.platform != "win32":
-#         return {}
-#
-#     usg_lib_path = nuke_root / "FnUSD" / "lib"
-#     usg_plugin_path = nuke_root / "FnUSD" / "plugin" / "usd"
-#     usg_shim_dll_path = next(iter(nuke_root.glob("FnUsdShim.*.dll")), None)
-#     for path in (usg_lib_path, usg_plugin_path, usg_shim_dll_path):
-#         if path is None or not path.exists():
-#             raise FileNotFoundError(
-#                 f"Cannot configure USD for Nuke: {str(path)!r} does not exist!"
-#             )
-#
-#     return {
-#         "USG_USD_LIB_PATH": str(usg_lib_path),
-#         "USG_USD_PLUGIN_PATH": str(usg_plugin_path),
-#         "USG_SHIMLIB_NAME": str(usg_shim_dll_path),
-#     }
-
-
 def get_stubs_out_dir() -> pathlib.Path:
     """Get the stubs out dir.
 
@@ -154,7 +130,6 @@ def run_stubgen_in_nuke_venv() -> None:
     nuke_root = get_nuke_root()
     nuke_executable_path = get_nuke_executable(nuke_root)
     env.update(get_pythonpath_env_var(nuke_root, env))
-    # env.update(get_nuke_usd_lib_env_vars(nuke_executable_path.parent))
 
     args = [
         str(nuke_executable_path),
