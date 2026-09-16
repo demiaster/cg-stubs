@@ -1,7 +1,21 @@
+"""Configure the environment and options to generate Nuke stubs.
+
+This script is executed in an uv managed venv, using the Python interpreter bundled with Nuke (see setup in
+`stubgen_nuke.{ps1,sh}`).
+The stubs generation runs via `nuke -t`, optionally selecting the non-commercial licensing (i.e. `--nc`).
+
+Notes on stubs runtime environment setup:
+
+  1. As the stubs generation happens via `nuke -t`, there is no need to configure any Nuke-specific env vars.
+  2. As the Nuke executable is not a Python interpreter, this script ensures that the venv's site-packages contributions
+     (crucially, `mypy`) are available.
+"""
+
 import os
 import pathlib
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 from typing import Mapping
 
@@ -13,6 +27,7 @@ _CURRENT_PATH = pathlib.Path(__file__).parent.absolute()
 
 
 def get_nuke_root() -> Path:
+    """Get Nuke install directory."""
     nuke_root_env_var = os.getenv(NUKE_ROOT_ENV_VAR, "")
     if not nuke_root_env_var:
         raise KeyError(
@@ -29,74 +44,41 @@ def get_nuke_root() -> Path:
 
 
 def get_nuke_executable(nuke_root: Path) -> Path:
-    # Win: 'C:\Program Files\Nuke17.1v1\Nuke17.1.exe'
-    # Linux: '/usr/local/Nuke17.0v2/Nuke17.0'
-    platform_pattern = "Nuke[0-9][0-9].[0-9].exe" if sys.platform == "win32" else "Nuke[0-9][0-9].[0-9]"
+    """Identify the nuke executable within the provided Nuke install directory.
 
-    nuke_executable_path = next(iter(nuke_root.glob(platform_pattern)), "")
+    Example Nuke executable path on different platforms:
 
-    if not nuke_executable_path or not nuke_executable_path.is_file():
+      - Win: 'C:/Program Files/Nuke17.1v1/Nuke17.1.exe'
+      - Linux: '/usr/local/Nuke17.0v2/Nuke17.0'
+    """
+    platform_pattern = (
+        "Nuke[0-9][0-9].[0-9].exe"
+        if sys.platform == "win32"
+        else "Nuke[0-9][0-9].[0-9]"
+    )
+
+    nuke_executable_path = next(iter(nuke_root.glob(platform_pattern)))
+
+    if nuke_executable_path is None or not nuke_executable_path.is_file():
         raise FileNotFoundError(
             f"Cannot locate Nuke's executable in {str(nuke_root)!r}"
         )
     return nuke_executable_path
 
 
-def get_venv_site_packages(env: Mapping[str, str] | None) -> Path:
+def get_stubgen_env_vars(env: Mapping[str, str] | None) -> dict[str, str]:
+    """Configure suitable Nuke environment to run stubs generation in."""
     if env is None:
         env = os.environ
 
-    if not env.get("VIRTUAL_ENV"):
-        raise RuntimeError("Must run this from a virtual environment!")
-
-    if sys.platform == "win32":
-        venv_py_executable = Path(env["VIRTUAL_ENV"]) / "Scripts" / "python.exe"
-    else:
-        venv_py_executable = next(iter(Path(env["VIRTUAL_ENV"], "bin").glob("python*")))
-    if not venv_py_executable or not venv_py_executable.exists():
-        raise RuntimeError("Cannot identify venv py executable")
-
-    venv_site_packages = subprocess.check_output(
+    stubgen_env = {}
+    stubgen_env["PYTHONPATH"] = os.pathsep.join(
         [
-            str(venv_py_executable),
-            "-c",
-            'import sysconfig; print(sysconfig.get_paths()["purelib"])',
-        ],
-        text=True,
-    ).strip()
-
-    return Path(venv_site_packages)
-
-
-def get_nuke_site_packages(nuke_root: Path) -> Path:
-    # FIXME: this was in the bash/pwsh as setting PYTHONPATH from scratch, here it is being added.
-    #  does it cause any issues?
-    nuke_libs = nuke_root / "lib"
-    if sys.platform == "win32":
-        nuke_site_packages = nuke_libs / "site-packages"
-    else:
-        nuke_site_packages = next(iter(nuke_libs.glob("*/site-packages")), "")
-    if not nuke_site_packages or not nuke_site_packages.is_dir():
-        raise NotADirectoryError(
-            f"Nuke site-packages directory {str(nuke_site_packages)} does not exist!"
-        )
-    return nuke_site_packages
-
-
-def get_pythonpath_env_var(
-    nuke_root: Path, env: Mapping[str, str] | None
-) -> dict[str, str]:
-    if env is None:
-        env = os.environ
-
-    pythonpath = os.pathsep.join(
-        [
-            str(get_venv_site_packages(env)),
-            str(get_nuke_site_packages(nuke_root)),
+            sysconfig.get_paths()["purelib"],
             env.get("PYTHONPATH", ""),
         ]
     )
-    return {"PYTHONPATH": pythonpath}
+    return stubgen_env
 
 
 def get_stubs_out_dir() -> pathlib.Path:
@@ -124,12 +106,11 @@ def get_stubs_generation_script_path() -> pathlib.Path:
 
 
 def run_stubgen_in_nuke_venv() -> None:
-    # Construct env for stub generation.
-    env = os.environ.copy()
-
+    """Run Nuke stub generation in a Nuke venv-like environment."""
     nuke_root = get_nuke_root()
     nuke_executable_path = get_nuke_executable(nuke_root)
-    env.update(get_pythonpath_env_var(nuke_root, env))
+    env = os.environ.copy()
+    env.update(get_stubgen_env_vars(env))
 
     args = [
         str(nuke_executable_path),
@@ -145,7 +126,7 @@ def run_stubgen_in_nuke_venv() -> None:
             str(get_stubs_out_dir()),
         ]
     )
-    print(f"Running command: {' '.join(args)}")
+    print(f"Running command: {subprocess.list2cmdline(args)}")
     result = subprocess.run(args, env=env)
 
     raise SystemExit(result.returncode)
