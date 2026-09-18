@@ -57,7 +57,10 @@ def get_nuke_executable(nuke_root: Path) -> Path:
         else "Nuke[0-9][0-9].[0-9]"
     )
 
-    nuke_executable_path = next(iter(nuke_root.glob(platform_pattern)))
+    try:
+        nuke_executable_path = next(nuke_root.glob(platform_pattern))
+    except StopIteration:
+        nuke_executable_path = None
 
     if nuke_executable_path is None or not nuke_executable_path.is_file():
         raise FileNotFoundError(
@@ -81,49 +84,33 @@ def get_stubgen_env_vars(env: Mapping[str, str] | None) -> dict[str, str]:
     return stubgen_env
 
 
-def get_stubs_out_dir() -> pathlib.Path:
-    """Get the stubs out dir.
-
-    This is the `STUBS_OUT` folder sibling of this script.
-    """
-    out_dir = Path(_CURRENT_PATH / STUBS_OUT).resolve()
-    if not out_dir.is_dir():
-        raise NotADirectoryError(f"Stubs out directory {str(out_dir)} does not exist!")
-    return out_dir
-
-
-def get_stubs_generation_script_path() -> pathlib.Path:
-    """Get the .py stubs generation script path.
-
-    This is the `STUBGEN_SCRIPT` Python script sibling of this one.
-    """
-    stubs_generation_script = Path(_CURRENT_PATH / STUBGEN_SCRIPT).resolve()
-    if not stubs_generation_script.exists():
-        raise FileNotFoundError(
-            f"Stubs generation script {str(stubs_generation_script)} does not exist!"
-        )
-    return stubs_generation_script
-
-
 def run_stubgen_in_nuke_venv() -> None:
-    """Run Nuke stub generation in a Nuke venv-like environment."""
+    """Run Nuke stub generation in a Nuke venv-like environment.
+
+    The stubgen generation script is the `STUBGEN_SCRIPT` Python script sibling of this one.
+    Stubs will be written in the `STUBS_OUT` dir sibling of this script.
+    """
     nuke_root = get_nuke_root()
     nuke_executable_path = get_nuke_executable(nuke_root)
     env = os.environ.copy()
     env.update(get_stubgen_env_vars(env))
+
+    stub_generation_script_path = Path(_CURRENT_PATH / STUBGEN_SCRIPT).resolve()
+    stub_out_dir = Path(_CURRENT_PATH / STUBS_OUT).resolve()
 
     args = [
         str(nuke_executable_path),
         "-t",
     ]
 
+    # FIXME: add non interactive.
     if os.getenv(NUKE_NON_COMMERCIAL_ENV_VAR):
         args.append("--nc")
 
     args.extend(
         [
-            str(get_stubs_generation_script_path()),
-            str(get_stubs_out_dir()),
+            str(stub_generation_script_path),
+            str(stub_out_dir),
         ]
     )
     print(f"Running command: {subprocess.list2cmdline(args)}")

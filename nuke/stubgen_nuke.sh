@@ -17,6 +17,7 @@ set -euo pipefail
 
 
 # Get this Nuke's Python interpreter.
+# FIXME: what happens if more than one match?
 nuke_py_interpreter=$(find "${NUKE_ROOT}" -maxdepth 1 -name "python[0-9].[0-9]?" -type f)
 
 [[ -z "${nuke_py_interpreter}" ]] && {
