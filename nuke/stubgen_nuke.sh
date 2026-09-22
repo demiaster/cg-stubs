@@ -17,13 +17,17 @@ set -euo pipefail
 
 
 # Get this Nuke's Python interpreter.
-# FIXME: what happens if more than one match?
-nuke_py_interpreter=$(find "${NUKE_ROOT}" -maxdepth 1 -name "python[0-9].[0-9]?" -type f)
+readarray -d '' nuke_py_interpreter < <(
+    find "${NUKE_ROOT}" -maxdepth 1 -regextype posix-extended -regex '.*/python[0-9]\.[0-9]{1,2}' -type f -print0
+)
 
-[[ -z "${nuke_py_interpreter}" ]] && {
+(( ${#nuke_py_interpreter[@]} == 0 )) && {
     >&2 echo "Cannot locate Nuke's python interpreter in ${NUKE_ROOT}."
     exit 1
 }
 
-echo "Running uv with Nuke's python interpreter ${nuke_py_interpreter}"
-uv run --only-dev --python "${nuke_py_interpreter}" --reinstall-package stubgenlib nuke_shim.py
+(( ${#nuke_py_interpreter[@]} > 1 )) && {
+    echo "Found multiple Nuke python interpreters in ${NUKE_ROOT}, proceeding with the first one."
+}
+echo "Running uv with Nuke's python interpreter ${nuke_py_interpreter[0]}"
+uv run --only-dev --python "${nuke_py_interpreter[0]}" --reinstall-package stubgenlib nuke_shim.py
