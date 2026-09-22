@@ -21,6 +21,7 @@ from typing import Mapping
 
 NUKE_ROOT_ENV_VAR = "NUKE_ROOT"
 NUKE_NON_COMMERCIAL_ENV_VAR = "NUKE_NON_COMMERCIAL"
+NUKE_INTERACTIVE_ENV_VAR = "NUKE_INTERACTIVE"
 STUBS_OUT = "stubs"
 STUBGEN_SCRIPT = "stubgen_nuke.py"
 _CURRENT_PATH = pathlib.Path(__file__).parent.absolute()
@@ -38,7 +39,7 @@ def get_nuke_root() -> Path:
 
     if not nuke_root_path.exists() or not nuke_root_path.is_dir():
         raise NotADirectoryError(
-            f"Candidate Nuke root {str(nuke_root_path)} is not a directory!"
+            f"Candidate Nuke root {str(nuke_root_path)!r} is not a directory!"
         )
     return nuke_root_path
 
@@ -103,9 +104,10 @@ def run_stubgen_in_nuke_venv() -> None:
         "-t",
     ]
 
-    # FIXME: add non interactive.
     if os.getenv(NUKE_NON_COMMERCIAL_ENV_VAR):
         args.append("--nc")
+    elif os.getenv(NUKE_INTERACTIVE_ENV_VAR):
+        args.append("-i")
 
     args.extend(
         [
